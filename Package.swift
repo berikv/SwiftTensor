@@ -20,16 +20,7 @@ let package = Package(
             name: "SwiftTensor"),
         .executableTarget(
             name: "SimdTester",
-            dependencies: ["SwiftTensor"],
-            swiftSettings: [
-                .unsafeFlags(["-Ounchecked"], .when(configuration: .release))
-//                .unsafeFlags([
-//                    "-Ounchecked",
-//                    "-Xfrontend", "-sil-inline-threshold=10000",
-//                    "-Xllvm", "-sil-inline-threshold=10000"
-//                ], .when(configuration: .release))
-//                .unsafeFlags(["-Ounchecked", "-Xswiftc", "-Xllvm", "-Xswiftc", "-inline-threshold=10000"], .when(configuration: .release))
-            ]
+            dependencies: ["SwiftTensor"]
         ),
         .testTarget(
             name: "SwiftTensorTests",
@@ -40,7 +31,6 @@ let package = Package(
             dependencies: ["SwiftTensor"],
             swiftSettings: [
                 .define("TEST_PERFORMANCE", .when(configuration: .release)),
-                .unsafeFlags(["-Ounchecked"], .when(configuration: .release))
             ]
         ),
     ]

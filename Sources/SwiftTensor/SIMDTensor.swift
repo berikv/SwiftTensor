@@ -66,7 +66,7 @@ extension SIMDTensor: Tensor {
 }
 
 extension SIMDTensor where ScalarType: FixedWidthInteger {
-    @inline(__always)
+    @inlinable
     public static func +(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -79,7 +79,7 @@ extension SIMDTensor where ScalarType: FixedWidthInteger {
         return SIMDTensor(_unsafePadded: result)
     }
 
-    @inline(__always)
+    @inlinable
     public static func -(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -92,7 +92,7 @@ extension SIMDTensor where ScalarType: FixedWidthInteger {
         return SIMDTensor(_unsafePadded: result)
     }
 
-    @inline(__always)
+    @inlinable
     public static func *(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -105,7 +105,7 @@ extension SIMDTensor where ScalarType: FixedWidthInteger {
         return SIMDTensor(_unsafePadded: result)
     }
 
-    @inline(__always)
+    @inlinable
     public static func /(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -199,7 +199,7 @@ extension SIMDTensor {
 }
 
 extension SIMDTensor where ScalarType: FixedWidthInteger {
-    @inline(__always)
+    @inlinable
     public func sum() -> ScalarType {
         var simdIndicesIter = _simdIndices.makeIterator()
         var current = _simd(at: simdIndicesIter.next()!)
@@ -218,7 +218,7 @@ extension SIMDTensor where ScalarType: FixedWidthInteger {
 }
 
 extension SIMDTensor where ScalarType: FloatingPoint {
-    @inline(__always)
+    @inlinable
     public static func +(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -231,7 +231,7 @@ extension SIMDTensor where ScalarType: FloatingPoint {
         return SIMDTensor(_unsafePadded: result)
     }
 
-    @inline(__always)
+    @inlinable
     public static func -(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -244,7 +244,7 @@ extension SIMDTensor where ScalarType: FloatingPoint {
         return SIMDTensor(_unsafePadded: result)
     }
 
-    @inline(__always)
+    @inlinable
     public static func *(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -257,7 +257,7 @@ extension SIMDTensor where ScalarType: FloatingPoint {
         return SIMDTensor(_unsafePadded: result)
     }
 
-    @inline(__always)
+    @inlinable
     public static func /(lhs: Self, rhs: Self) -> Self {
         var result = [ScalarType]()
         result.reserveCapacity(lhs._scalars.count)
@@ -317,7 +317,7 @@ extension SIMDTensor where ScalarType: FloatingPoint {
         return maxSIMD.max()
     }
 
-    @inline(__always)
+    @inlinable
     public func sum() -> ScalarType {
         var sum = SIMD.zero
         let lastValidIndex = _scalars.count - SIMD.scalarCount
@@ -338,7 +338,7 @@ extension SIMDTensor where ScalarType: FloatingPoint {
     }
 
 //    @inlinable
-    @inline(__always)
+    @inlinable
     public func mean() -> ScalarType {
         return sum() / ScalarType(scalars.count)
     }
