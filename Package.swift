@@ -1,24 +1,47 @@
 // swift-tools-version: 6.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
     name: "SwiftTensor",
+    platforms: [
+        .macOS(.v14)
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "SwiftTensor",
             targets: ["SwiftTensor"]),
+        .executable(
+            name: "SimdTester",
+            targets: ["SimdTester"]),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "SwiftTensor"),
+        .executableTarget(
+            name: "SimdTester",
+            dependencies: ["SwiftTensor"],
+            swiftSettings: [
+                .unsafeFlags(["-Ounchecked"], .when(configuration: .release))
+//                .unsafeFlags([
+//                    "-Ounchecked",
+//                    "-Xfrontend", "-sil-inline-threshold=10000",
+//                    "-Xllvm", "-sil-inline-threshold=10000"
+//                ], .when(configuration: .release))
+//                .unsafeFlags(["-Ounchecked", "-Xswiftc", "-Xllvm", "-Xswiftc", "-inline-threshold=10000"], .when(configuration: .release))
+            ]
+        ),
         .testTarget(
             name: "SwiftTensorTests",
             dependencies: ["SwiftTensor"]
+        ),
+        .testTarget(
+            name: "SwiftTensorPerformanceTests",
+            dependencies: ["SwiftTensor"],
+            swiftSettings: [
+                .define("TEST_PERFORMANCE", .when(configuration: .release)),
+                .unsafeFlags(["-Ounchecked"], .when(configuration: .release))
+            ]
         ),
     ]
 )
