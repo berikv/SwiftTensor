@@ -17,20 +17,31 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "SwiftTensor"),
+            name: "SwiftTensor",
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
+        ),
         .executableTarget(
             name: "SimdTester",
-            dependencies: ["SwiftTensor"]
+            dependencies: ["SwiftTensor"],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
         ),
         .testTarget(
             name: "SwiftTensorTests",
-            dependencies: ["SwiftTensor"]
+            dependencies: ["SwiftTensor"],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
         ),
         .testTarget(
             name: "SwiftTensorPerformanceTests",
             dependencies: ["SwiftTensor"],
             swiftSettings: [
                 .define("TEST_PERFORMANCE", .when(configuration: .release)),
+                .enableExperimentalFeature("StrictConcurrency")
             ]
         ),
     ]

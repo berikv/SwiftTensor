@@ -18,19 +18,6 @@ extension CPUTensor: Tensor {
     }
 
     @inlinable
-    public init(repeating value: ScalarType) {
-        _scalars = [ScalarType](repeating: value, count: ShapeType.scalarCount)
-    }
-
-    @inlinable
-    public static func random(in range: Range<ScalarType>) -> Self {
-        let scalars = (0..<ShapeType.scalarCount).map { _ in
-            ScalarType.random(in: range)
-        }
-        return Self(scalars)
-    }
-
-    @inlinable
     public subscript(index: Int) -> ScalarType {
         get { _scalars[index] }
         set { _scalars[index] = newValue }

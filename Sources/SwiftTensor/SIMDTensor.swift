@@ -37,19 +37,14 @@ where ScalarType: SIMDScalar
 
 extension SIMDTensor: Tensor {
     @inlinable
-    public var scalars: [ScalarType] {
-        return Array(_scalars[0..<ShapeType.scalarCount])
+    public var scalars: ArraySlice<ScalarType> {
+        _scalars[0..<ShapeType.scalarCount]
     }
 
     @inlinable
     public init(_ scalars: [ScalarType]) {
         assert(scalars.count == ShapeType.scalarCount, "Element count must equal \(ShapeType.scalarCount)")
         _scalars = scalars + [ScalarType](repeating: .zero, count: Self.paddingCount)
-    }
-
-    @inlinable
-    public init(repeating value: ScalarType) {
-        _scalars = [ScalarType](repeating: value, count: ShapeType.scalarCount) + [ScalarType](repeating: .zero, count: Self.paddingCount)
     }
 
     @inlinable
@@ -116,6 +111,23 @@ extension SIMDTensor where ScalarType: FixedWidthInteger {
         }
 
         return SIMDTensor(_unsafePadded: result)
+    }
+
+    @inlinable
+    public func sum() -> ScalarType {
+        var simdIndicesIter = _simdIndices.makeIterator()
+        var current = _simd(at: simdIndicesIter.next()!)
+
+
+        while let index = simdIndicesIter.next() {
+            current &+= _simd(at: index)
+        }
+
+        return current.wrappedSum()
+    }
+
+    public func mean() -> ScalarType {
+        return sum() / ScalarType(scalars.count)
     }
 }
 
@@ -198,76 +210,82 @@ extension SIMDTensor {
     //    }
 }
 
-extension SIMDTensor where ScalarType: FixedWidthInteger {
-    @inlinable
-    public func sum() -> ScalarType {
-        var simdIndicesIter = _simdIndices.makeIterator()
-        var current = _simd(at: simdIndicesIter.next()!)
-
-
-        while let index = simdIndicesIter.next() {
-            current &+= _simd(at: index)
-        }
-
-        return current.wrappedSum()
-    }
-
-    public func mean() -> ScalarType {
-        return sum() / ScalarType(scalars.count)
-    }
-}
-
 extension SIMDTensor where ScalarType: FloatingPoint {
+
+    @inlinable
+    public static func adding(into result: inout Self, _ lhs: Self, _ rhs: Self) {
+        var resultIndex = 0
+        for i in lhs._simdIndices {
+            let simdResult = lhs._simd(at: i) + rhs._simd(at: i)
+            for index in simdResult.indices {
+                result[resultIndex] = simdResult[index]
+                resultIndex += 1
+            }
+        }
+    }
+
     @inlinable
     public static func +(lhs: Self, rhs: Self) -> Self {
-        var result = [ScalarType]()
-        result.reserveCapacity(lhs._scalars.count)
+        var result = Self.zero
+        Self.adding(into: &result, lhs, rhs)
+        return result
+    }
 
+    @inlinable
+    public static func subtracting(into result: inout Self, _ lhs: Self, _ rhs: Self) {
+        var resultIndex = 0
         for i in lhs._simdIndices {
-            let sumSimd = lhs._simd(at: i) + rhs._simd(at: i)
-            sumSimd.indices.forEach { result.append(sumSimd[$0]) }
+            let simdResult = lhs._simd(at: i) - rhs._simd(at: i)
+            for index in simdResult.indices {
+                result[resultIndex] = simdResult[index]
+                resultIndex += 1
+            }
         }
-
-        return SIMDTensor(_unsafePadded: result)
     }
 
     @inlinable
     public static func -(lhs: Self, rhs: Self) -> Self {
-        var result = [ScalarType]()
-        result.reserveCapacity(lhs._scalars.count)
+        var result = Self.zero
+        Self.subtracting(into: &result, lhs, rhs)
+        return result
+    }
 
+    @inlinable
+    public static func multiplying(into result: inout Self, _ lhs: Self, _ rhs: Self) {
+        var resultIndex = 0
         for i in lhs._simdIndices {
-            let diffSimd = lhs._simd(at: i) - rhs._simd(at: i)
-            diffSimd.indices.forEach { result.append(diffSimd[$0]) }
+            let simdResult = lhs._simd(at: i) * rhs._simd(at: i)
+            for index in simdResult.indices {
+                result[resultIndex] = simdResult[index]
+                resultIndex += 1
+            }
         }
-
-        return SIMDTensor(_unsafePadded: result)
     }
 
     @inlinable
     public static func *(lhs: Self, rhs: Self) -> Self {
-        var result = [ScalarType]()
-        result.reserveCapacity(lhs._scalars.count)
+        var result = Self.zero
+        Self.multiplying(into: &result, lhs, rhs)
+        return result
+    }
 
+    @inlinable
+    public static func dividing(into result: inout Self, _ lhs: Self, _ rhs: Self) {
+        var resultIndex = 0
         for i in lhs._simdIndices {
-            let prodSimd = lhs._simd(at: i) * rhs._simd(at: i)
-            prodSimd.indices.forEach { result.append(prodSimd[$0]) }
+            let simdResult = lhs._simd(at: i) / rhs._simd(at: i)
+            for index in simdResult.indices {
+                result[resultIndex] = simdResult[index]
+                resultIndex += 1
+            }
         }
-
-        return SIMDTensor(_unsafePadded: result)
     }
 
     @inlinable
     public static func /(lhs: Self, rhs: Self) -> Self {
-        var result = [ScalarType]()
-        result.reserveCapacity(lhs._scalars.count)
-
-        for i in lhs._simdIndices {
-            let prodSimd = lhs._simd(at: i) / rhs._simd(at: i)
-            prodSimd.indices.forEach { result.append(prodSimd[$0]) }
-        }
-
-        return SIMDTensor(_unsafePadded: result)
+        var result = Self.zero
+        Self.dividing(into: &result, lhs, rhs)
+        return result
     }
 
     @inlinable
@@ -337,7 +355,6 @@ extension SIMDTensor where ScalarType: FloatingPoint {
         return sum.sum()
     }
 
-//    @inlinable
     @inlinable
     public func mean() -> ScalarType {
         return sum() / ScalarType(scalars.count)
@@ -357,17 +374,47 @@ extension SIMDTensor where ScalarType: FloatingPoint {
 
 extension SIMDTensor {
     @inlinable
+    public static func matrixMultiplying<L, R>(into result: inout Self, _ lhs: L, _ rhs: R) where L : Tensor, R : Tensor, ScalarType == L.ScalarType, L.ScalarType == R.ScalarType {
+        precondition(L.ShapeType.dimensionCount == 2, "matrixMultiply requires in and output Tensors to be 2-dimensional")
+        precondition(R.ShapeType.dimensionCount == 2, "matrixMultiply requires in and output Tensors to be 2-dimensional")
+        precondition(Self.ShapeType.dimensionCount == 2, "matrixMultiply requires in and output Tensors to be 2-dimensional")
+        precondition(Self.ShapeType.dimensionSizes[0] == L.ShapeType.dimensionSizes[0], "Left and Result dimensions must match for matrix multiplication")
+        precondition(R.ShapeType.dimensionSizes[0] == L.ShapeType.dimensionSizes[1], "Inner dimensions must match for matrix multiplication")
+        precondition(Self.ShapeType.dimensionSizes[1] == R.ShapeType.dimensionSizes[1], "Right and Result dimensions must match for matrix multiplication")
+
+        let lhsRows = L.ShapeType.dimensionSizes[0]
+        let lhsCols = L.ShapeType.dimensionSizes[1]
+        let rhsCols = R.ShapeType.dimensionSizes[1]
+
+        for i in 0..<lhsRows {
+            for j in 0..<rhsCols {
+                var sum: ScalarType = 0
+                for k in 0..<lhsCols {
+                    sum += lhs.scalars[i * lhsCols + k] * rhs.scalars[k * rhsCols + j]
+                }
+                result[i * rhsCols + j] = sum
+            }
+        }
+    }
+
+    @inlinable
     public static func matrixMultiply<L, R>(lhs: L, rhs: R) -> SIMDTensor<ScalarType, ShapeType> where L : Tensor, R : Tensor, ScalarType == L.ScalarType, L.ScalarType == R.ScalarType {
-        let result = CPUTensor<ScalarType, ShapeType>.matrixMultiply(
-            lhs: CPUTensor<ScalarType, L.ShapeType>(lhs.scalars),
-            rhs: CPUTensor<ScalarType, R.ShapeType>(rhs.scalars))
-        return Self(result.scalars)
+        var result = Self.zero
+        matrixMultiplying(into: &result, lhs, rhs)
+        return result
     }
 }
 
 extension SIMDTensor where ScalarType: SIMDStepCompatible {
     @inlinable
-    public func relu() -> SIMDTensor<ScalarType, ShapeType> {
+    public func applyingReLu() -> SIMDTensor<ScalarType, ShapeType> {
+        var other = self
+        other.relu()
+        return other
+    }
+
+    @inlinable
+    public mutating func relu() {
         var results = [ScalarType]()
         results.reserveCapacity(_scalars.count)
         let zero = SIMD(repeating: .zero)
@@ -375,18 +422,25 @@ extension SIMDTensor where ScalarType: SIMDStepCompatible {
             let result = simd_max(_simd(at: index), zero)
             result.indices.forEach { index in results.append(result[index]) }
         }
-        return Self(_unsafePadded: results)
+        self = Self(_unsafePadded: results)
     }
 }
 
 extension SIMDTensor where ScalarType: ExpCompatible & FloatingPoint {
     @inlinable
-    public func softmax() -> Self {
+    public func applyingSoftmax() -> Self {
+        var other = self
+        other.softmax()
+        return other
+    }
+
+    @inlinable
+    public mutating func softmax() {
         let maxScalar = max()
         let minus = self - Self(repeating: maxScalar)
         let exp = minus.exp()
         let sum = exp.sum()
         let softmax = exp / Self(repeating: sum)
-        return softmax
+        self = softmax
     }
 }

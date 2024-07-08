@@ -610,7 +610,7 @@ struct SIMDTensor_Float16Shape15_Tests {
         let scalars: [ScalarType] = [-1, -0.5, 0, 0.5, 1]
         let padding = [ScalarType](repeating: 0, count: TensorType.ShapeType.scalarCount - scalars.count)
         let tensor = TensorType(scalars + padding)
-        let result = tensor.relu()
+        let result = tensor.applyingReLu()
 
         let expectedScalars: [ScalarType] = [0, 0, 0, 0.5, 1] + padding
         #expect(result.scalars == expectedScalars)
@@ -749,7 +749,7 @@ struct SIMDTensor_DoubleShape15_Tests {
             0.025712057155898024, 0.025712057155898024, 0.025712057155898024, 0.025712057155898024,
             0.025712057155898024, 0.025712057155898024, 0.025712057155898024]
 
-        let result = tensor.softmax()
+        let result = tensor.applyingSoftmax()
         #expect(result.scalars.isApproximatelyEqual(to: expectedScalars))
     }
 
@@ -758,7 +758,7 @@ struct SIMDTensor_DoubleShape15_Tests {
         let scalars: [ScalarType] = [-1, -0.5, 0, 0.5, 1]
         let padding = [ScalarType](repeating: 0, count: TensorType.ShapeType.scalarCount - scalars.count)
         let tensor = TensorType(scalars + padding)
-        let result = tensor.relu()
+        let result = tensor.applyingReLu()
 
         let expectedScalars: [ScalarType] = [0, 0, 0, 0.5, 1] + padding
         #expect(result.scalars == expectedScalars)
