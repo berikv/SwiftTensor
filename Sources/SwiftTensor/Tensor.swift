@@ -13,6 +13,7 @@ public struct Tensor<ShapeType: Shape>: ~Copyable {
         _scalars.map { $0 }
     }
 
+    @inlinable
     public static var zero: Tensor<ShapeType> { .init(repeating: .zero) }
 
     @inlinable
@@ -134,6 +135,7 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public func sum() -> ScalarType {
+        // _scalars.reduce(0, +)
         var result = ScalarType.zero
 
         if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
@@ -211,19 +213,149 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public func max() -> ScalarType {
-        var maximum = _scalars.first!
-        for scalar in _scalars {
-            maximum = Swift.max(scalar, maximum)
+//        var maximum = _scalars.first!
+//        for scalar in _scalars {
+//            maximum = Swift.max(scalar, maximum)
+//        }
+//        return maximum
+
+        var result = _scalars.first!
+
+        if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
+            typealias SIMD = SIMD32<ScalarType>
+            var r = SIMD(self[0..<SIMD.scalarCount])
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+
+            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
+                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
+            }
+            result = simd_reduce_max(r)
+
+            // Handle any remaining elements
+            for i in simdCount..<count {
+                result = Swift.max(result, self[i])
+            }
+        } else if count >= 16 && MemoryLayout<ScalarType>.size < 8 {
+            typealias SIMD = SIMD16<ScalarType>
+            var r = SIMD(self[0..<SIMD.scalarCount])
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+
+            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
+                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
+            }
+            result = simd_reduce_max(r)
+
+            // Handle any remaining elements
+            for i in simdCount..<count {
+                result = Swift.max(result, self[i])
+            }
+        } else if count >= 8 {
+            typealias SIMD = SIMD8<ScalarType>
+            var r = SIMD(self[0..<SIMD.scalarCount])
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+
+            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
+                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
+            }
+            result = simd_reduce_max(r)
+
+            // Handle any remaining elements
+            for i in simdCount..<count {
+                result = Swift.max(result, self[i])
+            }
+        } else if count >= 4 {
+            typealias SIMD = SIMD4<ScalarType>
+            var r = SIMD(self[0..<SIMD.scalarCount])
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+
+            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
+                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
+            }
+            result = simd_reduce_max(r)
+
+            // Handle any remaining elements
+            for i in simdCount..<count {
+                result = Swift.max(result, self[i])
+            }
+        } else {
+            // Handle small tensors
+            for scalar in _scalars {
+                result += scalar
+            }
         }
-        return maximum
+
+        return result
     }
 }
 
 extension Tensor {
     @inlinable
     public mutating func exp() {
-        for index in _scalars.indices {
-            _scalars[index] = Darwin.exp(_scalars[index])
+//        for index in _scalars.indices {
+//            _scalars[index] = Darwin.exp(_scalars[index])
+//        }
+
+        if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
+            typealias SIMD = SIMD32<ScalarType>
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
+                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
+                for index in 0..<SIMD.scalarCount {
+                    _scalars[simdIndex + index] = result[index]
+                }
+            }
+
+            // Handle any remaining elements
+            for index in simdCount..<count {
+                _scalars[index] = Darwin.exp(_scalars[index])
+            }
+        } else if count >= 16 && MemoryLayout<ScalarType>.size < 8 {
+            typealias SIMD = SIMD16<ScalarType>
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
+                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
+                for index in 0..<SIMD.scalarCount {
+                    _scalars[simdIndex + index] = result[index]
+                }
+            }
+
+            // Handle any remaining elements
+            for index in simdCount..<count {
+                _scalars[index] = Darwin.exp(_scalars[index])
+            }
+        } else if count >= 8 {
+            typealias SIMD = SIMD8<ScalarType>
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
+                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
+                for index in 0..<SIMD.scalarCount {
+                    _scalars[simdIndex + index] = result[index]
+                }
+            }
+
+            // Handle any remaining elements
+            for index in simdCount..<count {
+                _scalars[index] = Darwin.exp(_scalars[index])
+            }
+        } else if count >= 4 {
+            typealias SIMD = SIMD4<ScalarType>
+            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
+                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
+                for index in 0..<SIMD.scalarCount {
+                    _scalars[simdIndex + index] = result[index]
+                }
+            }
+
+            // Handle any remaining elements
+            for index in simdCount..<count {
+                _scalars[index] = Darwin.exp(_scalars[index])
+            }
+        } else {
+            // Handle small tensors
+            for index in _scalars.indices {
+                _scalars[index] = Darwin.exp(_scalars[index])
+            }
         }
     }
 }

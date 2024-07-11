@@ -192,7 +192,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result == Float(ShapeType.scalarCount - 1))
-        #expect(measurement.mean.toBeCloseTo(0.001, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.000034, margin: 0.000005))
     }
 
     @Test
@@ -210,7 +210,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[4].toBeCloseTo(54.598, margin: 0.001))
-        #expect(measurement.mean.toBeCloseTo(0.0017, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.0016, margin: 0.0005))
     }
 
     @Test
@@ -247,7 +247,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(abs(result.sum() - 1) < 1e-6)
-        #expect(measurement.mean.toBeCloseTo(0.0048, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.0039, margin: 0.0005))
     }
 
     @Test

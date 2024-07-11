@@ -89,6 +89,52 @@ public func simd_max<S: SIMD>(_ first: S, _ second: S) -> S {
 }
 
 @inlinable
+public func simd_reduce_max<S: SIMD>(_ values: S) -> S.Scalar {
+    switch S.self {
+    case is SIMD2<Float16>.Type:
+        return simd.simd_reduce_max(values as! SIMD2<Float16>) as! S.Scalar
+    case is SIMD4<Float16>.Type:
+        return simd.simd_reduce_max(values as! SIMD4<Float16>) as! S.Scalar
+    case is SIMD8<Float16>.Type:
+        return simd.simd_reduce_max(values as! SIMD8<Float16>) as! S.Scalar
+    case is SIMD16<Float16>.Type:
+        return simd.simd_reduce_max(values as! SIMD16<Float16>) as! S.Scalar
+    case is SIMD32<Float16>.Type:
+        return simd.simd_reduce_max(values as! SIMD32<Float16>) as! S.Scalar
+    case is SIMD2<Float>.Type:
+        return simd.simd_reduce_max(values as! SIMD2<Float>) as! S.Scalar
+    case is SIMD4<Float>.Type:
+        return simd.simd_reduce_max(values as! SIMD4<Float>) as! S.Scalar
+    case is SIMD8<Float>.Type:
+        return simd.simd_reduce_max(values as! SIMD8<Float>) as! S.Scalar
+    case is SIMD16<Float>.Type:
+        return simd.simd_reduce_max(values as! SIMD16<Float>) as! S.Scalar
+    case is SIMD2<Double>.Type:
+        return simd.simd_reduce_max(values as! SIMD2<Double>) as! S.Scalar
+    case is SIMD4<Double>.Type:
+        return simd.simd_reduce_max(values as! SIMD4<Double>) as! S.Scalar
+    case is SIMD8<Double>.Type:
+        return simd.simd_reduce_max(values as! SIMD8<Double>) as! S.Scalar
+    case is SIMD2<Int>.Type:
+        return simd.simd_reduce_max(values as! SIMD2<Int>) as! S.Scalar
+    case is SIMD4<Int>.Type:
+        return simd.simd_reduce_max(values as! SIMD4<Int>) as! S.Scalar
+    case is SIMD8<Int>.Type:
+        return simd.simd_reduce_max(values as! SIMD8<Int>) as! S.Scalar
+    case is SIMD2<UInt>.Type:
+        return simd.simd_reduce_max(values as! SIMD2<UInt>) as! S.Scalar
+    case is SIMD4<UInt>.Type:
+        return simd.simd_reduce_max(values as! SIMD4<UInt>) as! S.Scalar
+    case is SIMD8<UInt>.Type:
+        return simd.simd_reduce_max(values as! SIMD8<UInt>) as! S.Scalar
+    default:
+        fatalError("Unsupported SIMD type")
+    }
+}
+
+
+
+@inlinable
 public func exp<S: SIMD>(_ x: S) -> S {
     switch S.self {
     case is SIMD2<Float16>.Type:
