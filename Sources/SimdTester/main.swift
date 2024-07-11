@@ -2,19 +2,19 @@
 import Foundation
 import SwiftTensor
 
-//testSIMDPerformance()
+testSIMDPerformance()
 testNeuralNetworkTraining()
 
 func testSIMDPerformance() {
-    let measurement = Measure(name: "Batch SIMD Tensor") {
-        runBatchSIMDTensor()
+    let measurement = Measure(1000, name: "Math") {
+        runBatchMath()
     }
     
     print(measurement)
 }
 
 func testNeuralNetworkTraining() {
-    let measurement = Measure(name: "Batch SIMD Tensor") {
+    let measurement = Measure(name: "Neural network training") {
         runNeuralNetworkTraining()
     }
 
@@ -61,25 +61,30 @@ extension Measure: CustomStringConvertible {
     var description: String {
         let nameDescription = name.map { "name: \($0), " } ?? ""
         return "\(nameDescription)"
-        + "mean: \(String(format: "%.4f", mean)), "
-        + "standardDeviation: \(String(format: "%.4f", standardDeviation))"
+        + "mean: \(String(format: "%.4f", mean * 1000))ms, "
+        + "standardDeviation: \(String(format: "%.4e", standardDeviation))"
     }
 }
 
+struct Shape784: Shape {
+    static var dimensionSizes: [Int] { [784] }
+}
+
+
 @inline(never)
-func runBatchSIMDTensor() -> Float {
-    typealias SIMD = SIMDTensor<Float, Shape784>
-    let tensorA = SIMD(repeating: 1.0)
-    let tensorB = SIMD(repeating: 2.0)
-    var result = SIMD(repeating: 0.0)
+func runBatchMath() -> Float {
+    typealias T = Tensor<Shape784>
+    let tensorA = T(repeating: 1.0)
+    let tensorB = T(repeating: 2.0)
+    var result = T(repeating: 0.0)
 
     let iterations = 10000
     var sum: Float = 0
     for _ in 0..<iterations {
-        SIMD.adding(into: &result, tensorA, tensorB)
-        SIMD.subtracting(into: &result, tensorA, tensorB)
-        SIMD.multiplying(into: &result, tensorA, tensorB)
-        SIMD.dividing(into: &result, tensorA, tensorB)
+        Tensor.adding(into: &result, tensorA, tensorB)
+        Tensor.subtracting(into: &result, tensorA, tensorB)
+        Tensor.multiplying(into: &result, tensorA, tensorB)
+        Tensor.dividing(into: &result, tensorA, tensorB)
 
         let mean = result.mean()
         sum += mean
@@ -90,59 +95,51 @@ func runBatchSIMDTensor() -> Float {
 
 struct Shape1x784: Shape {
     static let dimensionSizes: [Int] = [1, 784]
-    public static let strides: [Int] = computeStrides()
 }
 
 struct Shape784x128: Shape {
     static let dimensionSizes: [Int] = [784, 128]
-    public static let strides: [Int] = computeStrides()
 }
 
 struct Shape128x10: Shape {
     static let dimensionSizes: [Int] = [128, 10]
-    public static let strides: [Int] = computeStrides()
 }
 
 struct Shape1x128: Shape {
     static let dimensionSizes: [Int] = [1, 128]
-    public static let strides: [Int] = computeStrides()
 }
 
 struct Shape1x10: Shape {
     static let dimensionSizes: [Int] = [1, 10]
-    public static let strides: [Int] = computeStrides()
 }
 
 @inline(never)
 func runNeuralNetworkTraining() -> Float {
     typealias Scalar = Float
 
-    typealias InputTensor = SIMDTensor<Scalar, Shape1x784>
-    typealias HiddenWeightsTensor = SIMDTensor<Scalar, Shape784x128>
-    typealias OutputWeightsTensor = SIMDTensor<Scalar, Shape128x10>
-    typealias HiddenBiasTensor = SIMDTensor<Scalar, Shape1x128>
-    typealias OutputBiasTensor = SIMDTensor<Scalar, Shape1x10>
-    typealias HiddenLayerOutputTensor = SIMDTensor<Scalar, Shape1x128>
-    typealias OutputLayerOutputTensor = SIMDTensor<Scalar, Shape1x10>
-    typealias ErrorTensor = SIMDTensor<Scalar, Shape1x10>
+    typealias InputTensor = Tensor<Shape1x784>
+    typealias HiddenWeightsTensor = Tensor<Shape784x128>
+    typealias OutputWeightsTensor = Tensor<Shape128x10>
+    typealias HiddenBiasTensor = Tensor<Shape1x128>
+    typealias OutputBiasTensor = Tensor<Shape1x10>
+    typealias HiddenLayerOutputTensor = Tensor<Shape1x128>
+    typealias OutputLayerOutputTensor = Tensor<Shape1x10>
+    typealias ErrorTensor = Tensor<Shape1x10>
 
     // Initialize tensors
     let input = InputTensor.random(in: 0.0..<1.0)
-    var inputTransposed = TransposedTensor<InputTensor>.zero
-    var hiddenWeights = HiddenWeightsTensor.random(in: 0.0..<0.01)
-    var outputWeights = OutputWeightsTensor.random(in: 0.0..<0.01)
-    var outputWeightsTransposed = TransposedTensor<OutputWeightsTensor>.zero
+    var hiddenWeights = HiddenWeightsTensor.random(in: -0.01..<0.01)
+    var outputWeights = OutputWeightsTensor.random(in: -0.01..<0.01)
     var hiddenBias = HiddenBiasTensor.zero
     var outputBias = OutputBiasTensor.zero
 
     var hiddenLayerOutput = HiddenLayerOutputTensor.zero
-    var hiddenLayerOutputTransposed = TransposedTensor<HiddenLayerOutputTensor>.zero
     var outputLayerOutput = OutputLayerOutputTensor.zero
     var error = ErrorTensor.zero
     var dOutput = ErrorTensor.zero
     var dHidden = HiddenLayerOutputTensor.zero
 
-    let iterations = 1_000
+    let iterations = 1000
     var loss: Float = 0
 
     var outputWeightsUpdate = OutputWeightsTensor.zero
@@ -152,42 +149,46 @@ func runNeuralNetworkTraining() -> Float {
     for _ in 0..<iterations {
         // Forward pass
         // Hidden layer
-        SIMDTensor.matrixMultiplying(into: &hiddenLayerOutput, input, hiddenWeights)
-        SIMDTensor.adding(into: &hiddenLayerOutput, hiddenLayerOutput, hiddenBias)
+        Tensor.matrixMultiplying(into: &hiddenLayerOutput, input, hiddenWeights)
+        hiddenLayerOutput.add(hiddenBias)
         hiddenLayerOutput.relu()
 
         // Output layer
-        SIMDTensor.matrixMultiplying(into: &outputLayerOutput, hiddenLayerOutput, outputWeights)
-        SIMDTensor.adding(into: &outputLayerOutput, outputLayerOutput, outputBias)
+        Tensor.matrixMultiplying(into: &outputLayerOutput, hiddenLayerOutput, outputWeights)
+        outputLayerOutput.add(outputBias)
         outputLayerOutput.softmax()
 
         // Calculate error (for simplicity, assuming target is all zeros)
-        SIMDTensor.subtracting(into: &error, outputLayerOutput, OutputLayerOutputTensor(repeating: 0.0))
+        Tensor.subtracting(into: &error, outputLayerOutput, OutputLayerOutputTensor(repeating: 0.0))
 
         let mean = error.mean()
         if mean.isFinite {
             loss += mean
         } else {
-            print("loss \(loss), error.mean() -> \(error.mean()), error -> \(error)")
+            print("loss \(loss), error.mean() -> \(error.mean()), error -> \(error.description)")
         }
 
         // Backward pass
         // Output layer gradients
-        dOutput = error
-        hiddenLayerOutput.transpose(into: &hiddenLayerOutputTransposed)
-        SIMDTensor.matrixMultiplying(into: &outputWeightsUpdate, hiddenLayerOutputTransposed, dOutput)
-        SIMDTensor.adding(into: &outputWeights, outputWeights, outputWeightsUpdate)
-        SIMDTensor.adding(into: &outputBias, outputBias, dOutput)
+        dOutput = error.copy()
+        dOutput.clip(to: 1)
+
+        Tensor.matrixMultiplying(into: &outputWeightsUpdate, transpose: hiddenLayerOutput, dOutput)
+        outputWeights.add(outputWeightsUpdate)
+        outputBias.add(dOutput)
 
         // Hidden layer gradients
-        outputWeights.transpose(into: &outputWeightsTransposed)
-        SIMDTensor.matrixMultiplying(into: &dHiddenRaw, dOutput, outputWeightsTransposed)
-        dHidden = dHiddenRaw.applyingReLu()
+        Tensor.matrixMultiplying(into: &dHiddenRaw, dOutput, transpose: outputWeights)
+        dHiddenRaw.clip(to: 1)
+        dHidden = dHiddenRaw.copy()
+        dHidden.relu()
 
-        input.transpose(into: &inputTransposed)
-        SIMDTensor.matrixMultiplying(into: &hiddenWeightsUpdate, inputTransposed, dHidden)
-        SIMDTensor.adding(into: &hiddenWeights, hiddenWeights, hiddenWeightsUpdate)
-        SIMDTensor.adding(into: &hiddenBias, hiddenBias, dHidden)
+        Tensor.matrixMultiplying(into: &hiddenWeightsUpdate, transpose: input, dHidden)
+        hiddenWeights.add(hiddenWeightsUpdate)
+        hiddenBias.add(dHidden)
+
+        hiddenWeights.applyL2(lambda: 0.001)
+        outputWeights.applyL2(lambda: 0.001)
     }
 
     return loss / Float(iterations)
