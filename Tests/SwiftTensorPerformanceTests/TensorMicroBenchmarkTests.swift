@@ -3,7 +3,7 @@ import SwiftTensor
 
 struct TensorMicroBenchmarkTests {
 
-    typealias ShapeType = Shape15
+    typealias ShapeType = Shape784
     typealias TensorType = Tensor<ShapeType>
 
     init() {
@@ -19,13 +19,13 @@ struct TensorMicroBenchmarkTests {
 
         let measurement = Measure(name: "Add") {
             var tensor = TensorType(scalars)
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 tensor.add(term)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00010, margin: 0.00001))
+        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.00005))
     }
 
     @Test
@@ -36,13 +36,13 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Adding") {
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 TensorType.adding(into: &result, termA, termB)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00014, margin: 0.00002))
+        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
     }
 
     @Test
@@ -52,13 +52,13 @@ struct TensorMicroBenchmarkTests {
 
         let measurement = Measure(name: "Subtract") {
             var tensor = TensorType(scalars)
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 tensor.subtract(term)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00010, margin: 0.00001))
+        #expect(measurement.mean.toBeCloseTo(0.00050, margin: 0.00005))
     }
 
     @Test
@@ -69,13 +69,13 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Subtracting") {
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 TensorType.subtracting(into: &result, termA, termB)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00014, margin: 0.00002))
+        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
     }
 
     @Test
@@ -85,13 +85,13 @@ struct TensorMicroBenchmarkTests {
 
         let measurement = Measure(name: "Multiply") {
             var tensor = TensorType(scalars)
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 tensor.multiply(by: factor)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00010, margin: 0.00002))
+        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.00005))
     }
 
     @Test
@@ -102,13 +102,13 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Multiplying") {
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 TensorType.multiplying(into: &result, termA, termB)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00014, margin: 0.00002))
+        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
     }
 
     @Test
@@ -118,13 +118,13 @@ struct TensorMicroBenchmarkTests {
 
         let measurement = Measure(name: "Divide") {
             var tensor = TensorType(scalars)
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 tensor.divide(by: divisor)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00010, margin: 0.00002))
+        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.0001))
     }
 
     @Test
@@ -135,13 +135,13 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Dividing") {
-            for _ in 0..<10_000 {
+            for _ in 0..<1_000 {
                 TensorType.dividing(into: &result, termA, termB)
             }
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00014, margin: 0.00002))
+        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
     }
 
     @Test
@@ -151,14 +151,14 @@ struct TensorMicroBenchmarkTests {
         var result = Float.zero
 
         let measurement = Measure(name: "Sum") {
-            for _ in 0..<100_000 {
-                result += tensor.sum()
+            for _ in 0..<10_000 {
+                result = tensor.sum()
             }
         }
 
         print(measurement)
-        #expect(result.toBeCloseTo(1.46647e+08, margin: 1e+03))
-        #expect(measurement.mean.toBeCloseTo(0.0006, margin: 0.0001))
+        #expect(result == 306936)
+        #expect(measurement.mean.toBeCloseTo(0.0004, margin: 0.00005))
     }
 
     @Test
@@ -174,8 +174,8 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(result.toBeCloseTo(9.8e+06))
-        #expect(measurement.mean.toBeCloseTo(0.0006, margin: 0.00005))
+        #expect(result.toBeCloseTo(5.4032864e+08))
+        #expect(measurement.mean.toBeCloseTo(0.0043, margin: 0.0005))
     }
 
     @Test
@@ -185,14 +185,14 @@ struct TensorMicroBenchmarkTests {
         var result = Float.zero
 
         let measurement = Measure(name: "Max") {
-            for _ in 0..<100_000 {
-                result += tensor.max()
+            for _ in 0..<1_000 {
+                result = tensor.max()
             }
         }
 
         print(measurement)
-        #expect(result.toBeCloseTo(1.96e+07))
-        #expect(measurement.mean.toBeCloseTo(0.0006, margin: 0.00008))
+        #expect(result == Float(ShapeType.scalarCount - 1))
+        #expect(measurement.mean.toBeCloseTo(0.001, margin: 0.0005))
     }
 
     @Test
@@ -201,7 +201,7 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Exp") {
-            for _ in 0..<100_000 {
+            for _ in 0..<1_000 {
                 var tensor = TensorType(scalars)
                 tensor.exp()
                 result = tensor
@@ -210,7 +210,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[4].toBeCloseTo(54.598, margin: 0.001))
-        #expect(measurement.mean.toBeCloseTo(0.006, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.0017, margin: 0.0005))
     }
 
     @Test
@@ -219,7 +219,7 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "ReLu") {
-            for _ in 0..<100_000 {
+            for _ in 0..<1_000 {
                 var tensor = TensorType(scalars)
                 tensor.relu()
                 result = tensor
@@ -229,7 +229,7 @@ struct TensorMicroBenchmarkTests {
         print(measurement)
         #expect(result.scalars[4] == 4)
         #expect(result.scalars[5] == 0)
-        #expect(measurement.mean.toBeCloseTo(0.0043, margin: 0.0008))
+        #expect(measurement.mean.toBeCloseTo(0.00098, margin: 0.0001))
     }
 
     @Test
@@ -238,7 +238,7 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Softmax") {
-            for _ in 0..<100_000 {
+            for _ in 0..<1_000 {
                 var tensor = TensorType(scalars)
                 tensor.softmax()
                 result = tensor
@@ -247,7 +247,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(abs(result.sum() - 1) < 1e-6)
-        #expect(measurement.mean.toBeCloseTo(0.030, margin: 0.005))
+        #expect(measurement.mean.toBeCloseTo(0.0048, margin: 0.0005))
     }
 
     @Test
@@ -256,7 +256,7 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "Clip") {
-            for _ in 0..<100_000 {
+            for _ in 0..<1_000 {
                 var tensor = TensorType(scalars)
                 tensor.clip(to: 1)
                 result = tensor
@@ -265,7 +265,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[10] == 1)
-        #expect(measurement.mean.toBeCloseTo(0.0034, margin: 0.0008))
+        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.00008))
     }
 
     @Test
@@ -274,7 +274,7 @@ struct TensorMicroBenchmarkTests {
         var result = TensorType.zero
 
         let measurement = Measure(name: "ApplyL2") {
-            for _ in 0..<100_000 {
+            for _ in 0..<1_000 {
                 var tensor = TensorType(scalars)
                 tensor.applyL2(lambda: 0.0001)
                 result = tensor
@@ -283,7 +283,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[10].toBeCloseTo(9.999))
-        #expect(measurement.mean.toBeCloseTo(0.0034, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.00037, margin: 0.0001))
     }
 
     @Test
@@ -325,7 +325,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars == expected)
-        #expect(measurement.mean.toBeCloseTo(0.0022, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.0022, margin: 0.001))
     }
 
     @Test
