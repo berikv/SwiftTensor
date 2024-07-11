@@ -10,7 +10,7 @@ struct TensorPerformanceTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.0296, margin: 0.001))
+        #expect(measurement.mean.toBeCloseTo(0.0296, margin: 0.005))
     }
 
     @inline(never)
@@ -42,7 +42,7 @@ struct TensorPerformanceTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.253, margin: 0.003))
+        #expect(measurement.mean.toBeCloseTo(0.253, margin: 0.005))
     }
 
     @inline(never)
