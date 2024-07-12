@@ -316,7 +316,7 @@ struct Tensor_Shape15_Tests {
         let scalars: [ScalarType] = [1, 2, 3, 4, 5]
         let tensor = TensorType(scalars + [ScalarType](repeating: 0, count: ShapeType.scalarCount - scalars.count))
         let result = tensor.sum()
-        #expect(result == scalars.reduce(0, +))
+        #expect(result == 15)
     }
 
     @Test

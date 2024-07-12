@@ -167,6 +167,28 @@ public func exp<S: SIMD>(_ x: S) -> S {
     }
 }
 
+@inlinable
+public func simd_clamp<S: SIMD>(_ x: S, min: S.Scalar, max: S.Scalar) -> S {
+    switch S.self {
+    case is SIMD2<Float>.Type:
+        return simd.simd_clamp(x as! simd_float2, simd_float2(repeating: min as! Float), simd_float2(repeating: min as! Float)) as! S
+    case is SIMD4<Float>.Type:
+        return simd.simd_clamp(x as! simd_float4, simd_float4(repeating: min as! Float), simd_float4(repeating: max as! Float)) as! S
+    case is SIMD8<Float>.Type:
+        return simd.simd_clamp(x as! simd_float8, simd_float8(repeating: min as! Float), simd_float8(repeating: max as! Float)) as! S
+    case is SIMD16<Float>.Type:
+        return simd.simd_clamp(x as! simd_float16, simd_float16(repeating: min as! Float), simd_float16(repeating: max as! Float)) as! S
+    case is SIMD2<Double>.Type:
+        return simd.simd_clamp(x as! simd_double2, simd_double2(repeating: min as! Double), simd_double2(repeating: max as! Double)) as! S
+    case is SIMD4<Double>.Type:
+        return simd.simd_clamp(x as! simd_double4, simd_double4(repeating: min as! Double), simd_double4(repeating: max as! Double)) as! S
+    case is SIMD8<Double>.Type:
+        return simd.simd_clamp(x as! simd_double8, simd_double8(repeating: min as! Double), simd_double8(repeating: max as! Double)) as! S
+    default:
+        fatalError("Unsupported SIMD type")
+    }
+}
+
 public protocol SIMDStepCompatible: SIMDScalar, Codable, Hashable {}
 extension Float16: SIMDStepCompatible {}
 extension Float: SIMDStepCompatible {}

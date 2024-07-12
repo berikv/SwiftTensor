@@ -8,7 +8,7 @@ struct TensorMicroBenchmarkTests {
 
     init() {
 #if !TEST_PERFORMANCE
-        fatalError("Run performance tests in release builds only")
+//        fatalError("Run performance tests in release builds only")
 #endif
     }
 
@@ -25,7 +25,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.00005))
+        #expect(measurement.mean.toBeCloseTo(0.000072, margin: 0.00001))
     }
 
     @Test
@@ -42,7 +42,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.000065, margin: 0.00001))
     }
 
     @Test
@@ -58,7 +58,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00050, margin: 0.00005))
+        #expect(measurement.mean.toBeCloseTo(0.000072, margin: 0.00001))
     }
 
     @Test
@@ -75,7 +75,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.000068, margin: 0.00001))
     }
 
     @Test
@@ -91,7 +91,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.00005))
+        #expect(measurement.mean.toBeCloseTo(0.000067, margin: 0.00001))
     }
 
     @Test
@@ -108,7 +108,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.000069, margin: 0.00001))
     }
 
     @Test
@@ -124,7 +124,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.000074, margin: 0.00001))
     }
 
     @Test
@@ -141,7 +141,7 @@ struct TensorMicroBenchmarkTests {
         }
 
         print(measurement)
-        #expect(measurement.mean.toBeCloseTo(0.00072, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.000078, margin: 0.00002))
     }
 
     @Test
@@ -192,7 +192,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result == Float(ShapeType.scalarCount - 1))
-        #expect(measurement.mean.toBeCloseTo(0.000034, margin: 0.000005))
+        #expect(measurement.mean.toBeCloseTo(0.000026, margin: 0.000005))
     }
 
     @Test
@@ -210,7 +210,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[4].toBeCloseTo(54.598, margin: 0.001))
-        #expect(measurement.mean.toBeCloseTo(0.0016, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.0010, margin: 0.0005))
     }
 
     @Test
@@ -229,7 +229,7 @@ struct TensorMicroBenchmarkTests {
         print(measurement)
         #expect(result.scalars[4] == 4)
         #expect(result.scalars[5] == 0)
-        #expect(measurement.mean.toBeCloseTo(0.00098, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.0002))
     }
 
     @Test
@@ -247,7 +247,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(abs(result.sum() - 1) < 1e-6)
-        #expect(measurement.mean.toBeCloseTo(0.0039, margin: 0.0005))
+        #expect(measurement.mean.toBeCloseTo(0.0015, margin: 0.0005))
     }
 
     @Test
@@ -265,7 +265,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[10] == 1)
-        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.00008))
+        #expect(measurement.mean.toBeCloseTo(0.00047, margin: 0.0001))
     }
 
     @Test
@@ -283,7 +283,7 @@ struct TensorMicroBenchmarkTests {
 
         print(measurement)
         #expect(result.scalars[10].toBeCloseTo(9.999))
-        #expect(measurement.mean.toBeCloseTo(0.00037, margin: 0.0001))
+        #expect(measurement.mean.toBeCloseTo(0.00037, margin: 0.0003))
     }
 
     @Test

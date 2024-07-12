@@ -1,16 +1,63 @@
 
 import simd
 
-public struct Tensor<ShapeType: Shape>: ~Copyable {
+@frozen
+public struct Tensor<ShapeType: Shape> {
+
+    /**
+     *
+     * Benchmark results for divide(by:) on different SIMD<Float> sizes:
+     *
+     *      scalar: 0.4488ms
+     *      simd2: 0.2653ms
+     *      simd4: 0.1316ms
+     *      simd8: 0.0773ms
+     *      simd16: 0.0706ms
+     *      simd32: 4.9700ms
+     *
+     * Benchmark result for multiply(by:)
+     *
+     *      scalar: 0.4668ms
+     *      simd2: 0.2588ms
+     *      simd4: 0.1272ms
+     *      simd8: 0.0802ms
+     *      simd16: 0.0767ms
+     *      simd32: 5.3037ms
+     *
+     * Benchmark result for exp()
+     *
+     *      scalar: 1.7340ms
+     *      simd2: 1.7961ms
+     *      simd4: 1.0424ms
+     *      simd8: 1.0113ms
+     *      simd16: 1.0799ms
+     *
+     * The best bit-width for SIMD types depends on the CPU used.
+     * For M1, benchmarks here show that a bit-width of 256 is most efficient.
+     * There is a sudden cliff at 32 (512bit wide) simd.
+     *
+     */
+
     public typealias ScalarType = Float
     public let count = ShapeType.scalarCount
+
+    @usableFromInline
+    typealias SIMD = SIMD16<ScalarType>
+
+    @usableFromInline
+    internal static var simdSize: Int { SIMD.scalarCount }
+
+    @usableFromInline
+    internal static var paddingCount: Int {
+        (simdSize - (ShapeType.scalarCount % simdSize)) % simdSize
+    }
 
     @usableFromInline
     internal var _scalars: UnsafeMutableBufferPointer<ScalarType>
 
     @inlinable
     public var scalars: [ScalarType] {
-        _scalars.map { $0 }
+        Array(_scalars[0..<_scalars.endIndex - Self.paddingCount])
     }
 
     @inlinable
@@ -19,7 +66,7 @@ public struct Tensor<ShapeType: Shape>: ~Copyable {
     @inlinable
     public init(_ scalars: some Collection<ScalarType>) {
         assert(scalars.count == ShapeType.scalarCount)
-        self._scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: scalars.count)
+        self._scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: scalars.count + Self.paddingCount)
         for (index, i) in zip(self._scalars.indices, scalars.indices) {
             self._scalars[index] = scalars[i]
         }
@@ -37,12 +84,15 @@ public struct Tensor<ShapeType: Shape>: ~Copyable {
 
     @inlinable
     public func copy() -> Self {
-        Self(_scalars)
+        Self(scalars)
     }
 
-    deinit {
-//        _scalars.deallocate()
-    }
+
+    // Need an internal final class TensorStorage to take care of dealloc
+    // (see eg https://github.com/swiftlang/swift/blob/main/stdlib/public/core/ContiguousArrayBuffer.swift#L345)
+    //    deinit {
+    //        _scalars.deallocate()
+    //    }
 
     @inlinable
     public subscript(index: Int) -> ScalarType {
@@ -53,6 +103,7 @@ public struct Tensor<ShapeType: Shape>: ~Copyable {
     @inlinable
     public subscript(range: Range<Int>) -> Slice<some Collection<Float>> {
         get { _scalars[range] }
+        // TODO: Write a slice based range setter
 //        set { scalars[range] = newValue }
     }
 
@@ -76,58 +127,98 @@ public struct Tensor<ShapeType: Shape>: ~Copyable {
 extension Tensor {
 
     @inlinable
-    public static func adding(into result: inout Self, _ lhs: borrowing Self, _ rhs: borrowing Self) {
-        for index in result.indices {
-            result[index] = lhs[index] + rhs[index]
+    public static func adding(into result: inout Self, _ lhs: borrowing Self, _ rhs: /*borrowing*/ Self) {
+        lhs._scalars.withMemoryRebound(to: SIMD.self) { lhsBuffer in
+            rhs._scalars.withMemoryRebound(to: SIMD.self) { rhsBuffer in
+                result._scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                    for index in buffer.indices {
+                        buffer[index] = lhsBuffer[index] + rhsBuffer[index]
+                    }
+                }
+            }
         }
     }
 
     @inlinable
     public mutating func add(_ term: borrowing Self) {
-        for index in _scalars.indices {
-            _scalars[index] = _scalars[index] + term[index]
+        term._scalars.withMemoryRebound(to: SIMD.self) { termBuffer in
+            _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                for index in buffer.indices {
+                    buffer[index] += termBuffer[index]
+                }
+            }
         }
     }
 
     @inlinable
-    public static func subtracting(into result: inout Self, _ lhs: borrowing Self, _ rhs: borrowing Self) {
-        for index in result.indices {
-            result[index] = lhs[index] - rhs[index]
+    public static func subtracting(into result: inout Self, _ lhs: borrowing Self, _ rhs: /*borrowing*/ Self) {
+        lhs._scalars.withMemoryRebound(to: SIMD.self) { lhsBuffer in
+            rhs._scalars.withMemoryRebound(to: SIMD.self) { rhsBuffer in
+                result._scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                    for index in buffer.indices {
+                        buffer[index] = lhsBuffer[index] - rhsBuffer[index]
+                    }
+                }
+            }
         }
     }
 
     @inlinable
     public mutating func subtract(_ term: borrowing Self) {
-        for index in _scalars.indices {
-            _scalars[index] = _scalars[index] - term[index]
+        term._scalars.withMemoryRebound(to: SIMD.self) { termBuffer in
+            _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                for index in buffer.indices {
+                    buffer[index] -= termBuffer[index]
+                }
+            }
         }
     }
 
     @inlinable
-    public static func multiplying(into result: inout Self, _ lhs: borrowing Self, _ rhs: borrowing Self) {
-        for index in result.indices {
-            result[index] = lhs[index] * rhs[index]
+    public static func multiplying(into result: inout Self, _ lhs: borrowing Self, _ rhs: /*borrowing*/ Self) {
+        lhs._scalars.withMemoryRebound(to: SIMD.self) { lhsBuffer in
+            rhs._scalars.withMemoryRebound(to: SIMD.self) { rhsBuffer in
+                result._scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                    for index in buffer.indices {
+                        buffer[index] = lhsBuffer[index] * rhsBuffer[index]
+                    }
+                }
+            }
         }
     }
 
     @inlinable
     public mutating func multiply(by factor: borrowing Self) {
-        for index in _scalars.indices {
-            _scalars[index] = _scalars[index] * factor[index]
+        factor._scalars.withMemoryRebound(to: SIMD.self) { factorBuffer in
+            _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                for index in buffer.indices {
+                    buffer[index] *= factorBuffer[index]
+                }
+            }
         }
     }
 
     @inlinable
-    public static func dividing(into result: inout Self, _ lhs: borrowing Self, _ rhs: borrowing Self) {
-        for index in result.indices {
-            result[index] = lhs[index] / rhs[index]
+    public static func dividing(into result: inout Self, _ lhs: borrowing Self, _ rhs: /*borrowing*/ Self) {
+        lhs._scalars.withMemoryRebound(to: SIMD.self) { lhsBuffer in
+            rhs._scalars.withMemoryRebound(to: SIMD.self) { rhsBuffer in
+                result._scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                    for index in buffer.indices {
+                        buffer[index] = lhsBuffer[index] / rhsBuffer[index]
+                    }
+                }
+            }
         }
     }
 
     @inlinable
     public mutating func divide(by divisor: borrowing Self) {
-        for index in _scalars.indices {
-            _scalars[index] = _scalars[index] / divisor[index]
+        divisor._scalars.withMemoryRebound(to: SIMD.self) { divisorBuffer in
+            _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                for index in buffer.indices {
+                    buffer[index] /= divisorBuffer[index]
+                }
+            }
         }
     }
 }
@@ -135,73 +226,25 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public func sum() -> ScalarType {
-        // _scalars.reduce(0, +)
-        var result = ScalarType.zero
+        // scalars.reduce(0, +)
 
-        if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
-            typealias SIMD = SIMD32<ScalarType>
-            var sum = SIMD.zero
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+        var sum = SIMD.zero
+        let simdCount = count / SIMD.scalarCount
 
-            for i in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                sum += SIMD(self[i..<i+SIMD.scalarCount])
-            }
-            result = sum.sum()
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result += self[i]
-            }
-        } else if count >= 16 && MemoryLayout<ScalarType>.size < 8 {
-            typealias SIMD = SIMD16<ScalarType>
-            var sum = SIMD.zero
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-
-            for i in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                sum += SIMD(self[i..<i+SIMD.scalarCount])
-            }
-            result = sum.sum()
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result += self[i]
-            }
-        } else if count >= 8 {
-            typealias SIMD = SIMD8<ScalarType>
-            var sum = SIMD.zero
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-
-            for i in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                sum += SIMD(self[i..<i+SIMD.scalarCount])
-            }
-            result = sum.sum()
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result += self[i]
-            }
-        } else if count >= 4 {
-            typealias SIMD = SIMD4<ScalarType>
-            var sum = SIMD.zero
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-
-            for i in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                sum += SIMD(self[i..<i+SIMD.scalarCount])
-            }
-            result = sum.sum()
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result += self[i]
-            }
-        } else {
-            // Handle small tensors
-            for scalar in _scalars {
-                result += scalar
+        _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+            for index in 0..<simdCount {
+                sum += buffer[index]
             }
         }
+        
+        // Add the scalars that did not fit into a simd
+        var remainingSum = ScalarType.zero
+        let remainingStartIndex = simdCount * SIMD.scalarCount
+        for index in remainingStartIndex..<count {
+            remainingSum += _scalars[index]
+        }
 
-        return result
+        return sum.sum() + remainingSum
     }
 
     @inlinable
@@ -213,75 +256,26 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public func max() -> ScalarType {
-//        var maximum = _scalars.first!
-//        for scalar in _scalars {
-//            maximum = Swift.max(scalar, maximum)
-//        }
-//        return maximum
+        // let first = scalars.first!
+        // return scalars.reduce(first, Swift.max)
 
         var result = _scalars.first!
+        let simdCount = count / SIMD.scalarCount
 
-        if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
-            typealias SIMD = SIMD32<ScalarType>
-            var r = SIMD(self[0..<SIMD.scalarCount])
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
+        if simdCount > 0 {
+            result = _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                var simdResult = buffer.first!
+                for index in 0..<simdCount {
+                    simdResult = simd_max(simdResult, buffer[index])
+                }
+                return simd_reduce_max(simdResult)
+            }
+        }
 
-            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
-                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
-            }
-            result = simd_reduce_max(r)
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result = Swift.max(result, self[i])
-            }
-        } else if count >= 16 && MemoryLayout<ScalarType>.size < 8 {
-            typealias SIMD = SIMD16<ScalarType>
-            var r = SIMD(self[0..<SIMD.scalarCount])
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-
-            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
-                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
-            }
-            result = simd_reduce_max(r)
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result = Swift.max(result, self[i])
-            }
-        } else if count >= 8 {
-            typealias SIMD = SIMD8<ScalarType>
-            var r = SIMD(self[0..<SIMD.scalarCount])
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-
-            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
-                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
-            }
-            result = simd_reduce_max(r)
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result = Swift.max(result, self[i])
-            }
-        } else if count >= 4 {
-            typealias SIMD = SIMD4<ScalarType>
-            var r = SIMD(self[0..<SIMD.scalarCount])
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-
-            for i in stride(from: SIMD.scalarCount, to: simdCount, by: SIMD.scalarCount) {
-                r = simd_max(SIMD(self[i..<i+SIMD.scalarCount]), r)
-            }
-            result = simd_reduce_max(r)
-
-            // Handle any remaining elements
-            for i in simdCount..<count {
-                result = Swift.max(result, self[i])
-            }
-        } else {
-            // Handle small tensors
-            for scalar in _scalars {
-                result += scalar
-            }
+        // Add the scalars that did not fit into a simd
+        let remainingStartIndex = simdCount * SIMD.scalarCount
+        for index in remainingStartIndex..<count {
+            result = Swift.max(result, _scalars[index])
         }
 
         return result
@@ -291,70 +285,9 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public mutating func exp() {
-//        for index in _scalars.indices {
-//            _scalars[index] = Darwin.exp(_scalars[index])
-//        }
-
-        if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
-            typealias SIMD = SIMD32<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Darwin.exp(_scalars[index])
-            }
-        } else if count >= 16 && MemoryLayout<ScalarType>.size < 8 {
-            typealias SIMD = SIMD16<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Darwin.exp(_scalars[index])
-            }
-        } else if count >= 8 {
-            typealias SIMD = SIMD8<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Darwin.exp(_scalars[index])
-            }
-        } else if count >= 4 {
-            typealias SIMD = SIMD4<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = SwiftTensor.exp(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]))
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Darwin.exp(_scalars[index])
-            }
-        } else {
-            // Handle small tensors
-            for index in _scalars.indices {
-                _scalars[index] = Darwin.exp(_scalars[index])
+        _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+            for index in buffer.indices {
+                buffer[index] = SwiftTensor.exp(buffer[index])
             }
         }
     }
@@ -450,66 +383,9 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public mutating func relu() {
-        if count >= 32 && MemoryLayout<ScalarType>.size < 2 {
-            typealias SIMD = SIMD32<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = simd_max(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]), SIMD.zero)
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Swift.max(_scalars[index], .zero)
-            }
-        } else if count >= 16 && MemoryLayout<ScalarType>.size < 8 {
-            typealias SIMD = SIMD16<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = simd_max(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]), SIMD.zero)
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Swift.max(_scalars[index], .zero)
-            }
-        } else if count >= 8 {
-            typealias SIMD = SIMD8<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = simd_max(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]), SIMD.zero)
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Swift.max(_scalars[index], .zero)
-            }
-        } else if count >= 4 {
-            typealias SIMD = SIMD4<ScalarType>
-            let simdCount = count / SIMD.scalarCount * SIMD.scalarCount
-            for simdIndex in stride(from: 0, to: simdCount, by: SIMD.scalarCount) {
-                let result = simd_max(SIMD(_scalars[simdIndex..<simdIndex+SIMD.scalarCount]), SIMD.zero)
-                for index in 0..<SIMD.scalarCount {
-                    _scalars[simdIndex + index] = result[index]
-                }
-            }
-
-            // Handle any remaining elements
-            for index in simdCount..<count {
-                _scalars[index] = Swift.max(_scalars[index], .zero)
-            }
-        } else {
-            // Handle small tensors
-            for index in _scalars.indices {
-                _scalars[index] = Swift.max(_scalars[index], .zero)
+        _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+            for index in buffer.indices {
+                buffer[index] = simd_max(buffer[index], SIMD.zero)
             }
         }
     }
@@ -519,16 +395,50 @@ extension Tensor {
     @inlinable
     public mutating func softmax() {
         let maxScalar = max()
-        subtract(Self(repeating: maxScalar))
-        exp()
-        let sum = self.sum()
-        divide(by: Self(repeating: sum))
 
-        // Handle numerical stability
-        for index in _scalars.indices {
-            if !_scalars[index].isFinite {
-                _scalars[index] = 0
-                print("Ovelflow in \(description)...")
+        // Subtract the maximum, exponentiate, and sum
+        var sum: ScalarType = 0
+        let simdCount = count / SIMD.scalarCount
+        let remainingStartIndex = simdCount * SIMD.scalarCount
+
+        if simdCount > 0 {
+            sum = _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                var simdSum = SIMD.zero
+                for index in 0..<simdCount {
+                    buffer[index] -= SIMD(repeating: maxScalar)
+                    buffer[index] = simd.exp(buffer[index])
+                    simdSum += buffer[index]
+                }
+                return simd_reduce_add(simdSum)
+            }
+        }
+
+        // Add the scalars that did not fit into a SIMD
+        for index in remainingStartIndex..<count {
+            _scalars[index] = Darwin.exp(_scalars[index] - maxScalar)
+            sum += _scalars[index]
+        }
+
+        // Divide by the sum
+        let invSum = 1 / sum
+        if simdCount > 0 {
+            _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+                for index in 0..<simdCount {
+                    buffer[index] *= SIMD(repeating: invSum)
+                }
+            }
+        }
+
+        // Normalize remaining scalars
+        for index in remainingStartIndex..<count {
+            _scalars[index] *= invSum
+        }
+
+        // Numerical stability check
+        for index in indices {
+            if !self[index].isFinite {
+                self[index] = 0
+                print("Overflow in \(description)...")
             }
         }
     }
@@ -537,15 +447,19 @@ extension Tensor {
 extension Tensor {
     @inlinable
     public mutating func applyL2(lambda: ScalarType) {
-        for index in _scalars.indices {
-            _scalars[index] -= lambda * _scalars[index]
+        _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+            for index in buffer.indices {
+                buffer[index] -= SIMD(repeating: lambda) * buffer[index]
+            }
         }
     }
 
     @inlinable
     public mutating func clip(to value: ScalarType) {
-        for index in _scalars.indices {
-            _scalars[index] = Swift.min(Swift.max(_scalars[index], -value), value)
+        _scalars.withMemoryRebound(to: SIMD.self) { buffer in
+            for index in buffer.indices {
+                buffer[index] = simd_clamp(buffer[index], min: value, max: value)
+            }
         }
     }
 }
