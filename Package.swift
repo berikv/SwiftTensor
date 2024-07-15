@@ -5,15 +5,16 @@ import PackageDescription
 let package = Package(
     name: "SwiftTensor",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
+        .iOS(.v16)
     ],
     products: [
         .library(
             name: "SwiftTensor",
             targets: ["SwiftTensor"]),
         .executable(
-            name: "SimdTester",
-            targets: ["SimdTester"]),
+            name: "tensor-cli",
+            targets: ["tensor-cli"]),
     ],
     targets: [
         .target(
@@ -23,7 +24,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "SimdTester",
+            name: "tensor-cli",
             dependencies: ["SwiftTensor"],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")

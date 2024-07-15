@@ -2,6 +2,11 @@
 import Foundation
 import SwiftTensor
 
+/**
+ * A cli tool that uses the SwiftTensor library. Useful for profiling the library using the Profiler.app.
+ */
+
+
 //testSoftmax()
 //testMathPerformance()
 testNeuralNetworkTraining()
