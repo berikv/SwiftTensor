@@ -2,6 +2,8 @@ import Testing
 import SwiftTensor
 
 #if TEST_PERFORMANCE
+
+@Suite(.serialized)
 struct TensorPerformanceTests {
     @Test
     func testMathPerformance() {
@@ -124,4 +126,5 @@ struct TensorPerformanceTests {
         return loss / Float(iterations)
     }
 }
+
 #endif

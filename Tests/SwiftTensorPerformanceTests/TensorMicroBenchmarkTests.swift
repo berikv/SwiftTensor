@@ -1,6 +1,7 @@
 import Testing
 import SwiftTensor
 
+@Suite(.serialized)
 struct TensorMicroBenchmarkTests {
 
     typealias ShapeType = Shape784
