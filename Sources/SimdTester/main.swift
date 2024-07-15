@@ -2,10 +2,11 @@
 import Foundation
 import SwiftTensor
 
-testSIMDPerformance()
+//testSoftmax()
+//testMathPerformance()
 testNeuralNetworkTraining()
 
-func testSIMDPerformance() {
+func testMathPerformance() {
     let measurement = Measure(1000, name: "Math") {
         runBatchMath()
     }
@@ -70,6 +71,25 @@ struct Shape784: Shape {
     static var dimensionSizes: [Int] { [784] }
 }
 
+
+typealias ShapeType = Shape784
+typealias TensorType = Tensor<ShapeType>
+
+@inline(never)
+func testSoftmax() {
+    let scalars = (0..<ShapeType.scalarCount).map { $0.isMultiple(of: 2) ? Float($0) : -Float($0) }
+    var result = TensorType.zero
+
+    let measurement = Measure(name: "Softmax") {
+        for _ in 0..<100_000 {
+            var tensor = TensorType(scalars)
+            tensor.softmax()
+            result = tensor
+        }
+    }
+
+    print(measurement)
+}
 
 @inline(never)
 func runBatchMath() -> Float {
