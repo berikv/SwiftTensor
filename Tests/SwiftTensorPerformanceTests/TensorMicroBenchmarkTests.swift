@@ -1,16 +1,63 @@
 import Testing
 import SwiftTensor
 
+#if TEST_PERFORMANCE
+
 @Suite(.serialized)
 struct TensorMicroBenchmarkTests {
 
     typealias ShapeType = Shape784
     typealias TensorType = Tensor<ShapeType>
 
-    init() {
-#if !TEST_PERFORMANCE
-//        fatalError("Run performance tests in release builds only")
-#endif
+    @Test
+    func testZero() {
+        @inline(never)
+        func generate() { _ = TensorType.zero }
+        let measurement = Measure(name: "Zero") {
+            for _ in 0..<100_000 {
+                generate()
+            }
+        }
+        #expect(measurement.mean.toBeCloseTo(0.054, margin: 0.005))
+    }
+
+    @Test
+    func testRepeating() {
+        @inline(never)
+        func generate() { _ = TensorType(repeating: 42.0) }
+        let measurement = Measure(name: "Repeating") {
+            for _ in 0..<100_000 {
+                generate()
+            }
+        }
+        print(measurement.mean)
+        #expect(measurement.mean.toBeCloseTo(0.05, margin: 0.01))
+    }
+
+    @Test
+    func testRandom() {
+        @inline(never)
+        func generate() { _ = TensorType.random(in: 0...1) }
+        let measurement = Measure(name: "HeRandom") {
+            for _ in 0..<100 {
+                generate()
+            }
+        }
+        print(measurement.mean)
+        #expect(measurement.mean.toBeCloseTo(0.0030, margin: 0.0001))
+    }
+
+    @Test
+    func testHeRandom() {
+        @inline(never)
+        func generate() { _ = TensorType.heRandom(in: 0...1) }
+        let measurement = Measure(name: "HeRandom") {
+            for _ in 0..<100 {
+                generate()
+            }
+        }
+        print(measurement.mean)
+        #expect(measurement.mean.toBeCloseTo(0.0235, margin: 0.001))
     }
 
     @Test
@@ -350,3 +397,5 @@ struct TensorMicroBenchmarkTests {
         #expect(measurement.mean.toBeCloseTo(0.0012, margin: 0.0005))
     }
 }
+
+#endif

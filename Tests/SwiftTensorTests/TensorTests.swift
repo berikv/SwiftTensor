@@ -23,9 +23,36 @@ struct Tensor_Shape784_Tests {
 
     @Test
     func testInitWithRandomRange() {
-        let tensor = TensorType.random(in: 0..<1)
-        let inRange = tensor.scalars.allSatisfy { $0 >= 0 && $0 <= 1 }
-        #expect(inRange)
+        let tensor = TensorType.random(in: 0...1)
+        #expect(tensor.scalars.allSatisfy { $0 >= 0 && $0 <= 1 })
+        #expect(tensor.mean().toBeCloseTo(0.5, margin: 0.1))
+    }
+
+    @Test
+    func testInitWithHeRandomRange() {
+        let range: ClosedRange<Float> = 0...1
+        let scalarCount = Float(ShapeType.scalarCount)
+        let stddev = (2 / scalarCount).squareRoot()
+
+        var samples = [Float]()
+        for _ in 0..<100 {
+            let tensor = TensorType.heRandom(in: range)
+            #expect(tensor.scalars.allSatisfy { $0 >= 0 && $0 <= stddev })
+            samples.append(contentsOf: tensor.scalars)
+        }
+
+        let mean = samples.reduce(0, +) / Float(samples.count)
+        let variance = samples.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Float(samples.count)
+        let standardDeviation = sqrt(variance)
+
+        // Expected values based on He initialization
+        let expectedMean: Float = 0.5 * stddev
+        let expectedVariance: Float = (stddev * stddev) / 12.0
+        let expectedStdDev: Float = sqrt(expectedVariance)
+
+        #expect(mean.toBeCloseTo(expectedMean, margin: 0.01))
+        #expect(variance.toBeCloseTo(expectedVariance, margin: 0.01))
+        #expect(standardDeviation.toBeCloseTo(expectedStdDev, margin: 0.01))
     }
 
     @Test
@@ -207,9 +234,36 @@ struct Tensor_Shape15_Tests {
 
     @Test
     func testInitWithRandomRange() {
-        let tensor = TensorType.random(in: 0..<1)
-        let inRange = tensor.scalars.allSatisfy { $0 >= 0 && $0 <= 1 }
-        #expect(inRange)
+        let tensor = TensorType.random(in: 0...1)
+        #expect(tensor.scalars.allSatisfy { $0 >= 0 && $0 <= 1 })
+        #expect(tensor.mean().toBeCloseTo(0.5, margin: 0.1))
+    }
+
+    @Test
+    func testInitWithHeRandomRange() {
+        let range: ClosedRange<Float> = 0...1
+        let scalarCount = Float(ShapeType.scalarCount)
+        let stddev = (2 / scalarCount).squareRoot()
+
+        var samples = [Float]()
+        for _ in 0..<10_000 {
+            let tensor = TensorType.heRandom(in: range)
+            #expect(tensor.scalars.allSatisfy { $0 >= 0 && $0 <= stddev })
+            samples.append(contentsOf: tensor.scalars)
+        }
+
+        let mean = samples.reduce(0, +) / Float(samples.count)
+        let variance = samples.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Float(samples.count)
+        let standardDeviation = sqrt(variance)
+
+        // Expected values based on He initialization
+        let expectedMean: Float = 0.5 * stddev
+        let expectedVariance: Float = (stddev * stddev) / 12.0
+        let expectedStdDev: Float = sqrt(expectedVariance)
+
+        #expect(mean.toBeCloseTo(expectedMean, margin: 0.01))
+        #expect(variance.toBeCloseTo(expectedVariance, margin: 0.01))
+        #expect(standardDeviation.toBeCloseTo(expectedStdDev, margin: 0.01))
     }
 
     @Test

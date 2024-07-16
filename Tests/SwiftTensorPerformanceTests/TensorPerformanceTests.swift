@@ -61,9 +61,9 @@ struct TensorPerformanceTests {
         typealias ErrorTensor = Tensor<Shape1x10>
 
         // Initialize tensors
-        let input = InputTensor.random(in: 0.0..<1.0)
-        var hiddenWeights = HiddenWeightsTensor.random(in: -0.01..<0.01)
-        var outputWeights = OutputWeightsTensor.random(in: -0.01..<0.01)
+        let input = InputTensor.random(in: 0.0...1.0)
+        var hiddenWeights = HiddenWeightsTensor.random(in: -0.01...0.01)
+        var outputWeights = OutputWeightsTensor.random(in: -0.01...0.01)
         var hiddenBias = HiddenBiasTensor.zero
         var outputBias = OutputBiasTensor.zero
 
@@ -101,7 +101,7 @@ struct TensorPerformanceTests {
 
             // Backward pass
             // Output layer gradients
-            dOutput = error.copy()
+            dOutput = error
             dOutput.clip(to: 1)
 
             var outputWeightsUpdate = OutputWeightsTensor.zero

@@ -8,12 +8,13 @@ import SwiftTensor
 
 
 //testSoftmax()
-//testMathPerformance()
-testNeuralNetworkTraining()
+testMathPerformance()
+//testNeuralNetworkTraining()
 
 func testMathPerformance() {
     let measurement = Measure(1000, name: "Math") {
-        runBatchMath()
+//        runBatchMath()
+        _ = Tensor<Shape784>.heRandom(in: 0...1)
     }
     
     print(measurement)
@@ -152,9 +153,9 @@ func runNeuralNetworkTraining() -> Float {
     typealias ErrorTensor = Tensor<Shape1x10>
 
     // Initialize tensors
-    let input = InputTensor.random(in: 0.0..<1.0)
-    var hiddenWeights = HiddenWeightsTensor.random(in: -0.01..<0.01)
-    var outputWeights = OutputWeightsTensor.random(in: -0.01..<0.01)
+    let input = InputTensor.random(in: 0.0...1.0)
+    var hiddenWeights = HiddenWeightsTensor.random(in: -0.01...0.01)
+    var outputWeights = OutputWeightsTensor.random(in: -0.01...0.01)
     var hiddenBias = HiddenBiasTensor.zero
     var outputBias = OutputBiasTensor.zero
 
@@ -195,7 +196,7 @@ func runNeuralNetworkTraining() -> Float {
 
         // Backward pass
         // Output layer gradients
-        dOutput = error.copy()
+        dOutput = error
         dOutput.clip(to: 1)
 
         Tensor.matrixMultiplying(into: &outputWeightsUpdate, transpose: hiddenLayerOutput, dOutput)
@@ -205,7 +206,7 @@ func runNeuralNetworkTraining() -> Float {
         // Hidden layer gradients
         Tensor.matrixMultiplying(into: &dHiddenRaw, dOutput, transpose: outputWeights)
         dHiddenRaw.clip(to: 1)
-        dHidden = dHiddenRaw.copy()
+        dHidden = dHiddenRaw
         dHidden.relu()
 
         Tensor.matrixMultiplying(into: &hiddenWeightsUpdate, transpose: input, dHidden)

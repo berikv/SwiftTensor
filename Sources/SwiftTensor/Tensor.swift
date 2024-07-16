@@ -2,41 +2,7 @@
 import simd
 
 @frozen
-public struct Tensor<ShapeType: Shape> {
-
-    /**
-     *
-     * Benchmark results for divide(by:) on different SIMD<Float> sizes:
-     *
-     *      scalar: 0.4488ms
-     *      simd2: 0.2653ms
-     *      simd4: 0.1316ms
-     *      simd8: 0.0773ms
-     *      simd16: 0.0706ms
-     *      simd32: 4.9700ms
-     *
-     * Benchmark result for multiply(by:)
-     *
-     *      scalar: 0.4668ms
-     *      simd2: 0.2588ms
-     *      simd4: 0.1272ms
-     *      simd8: 0.0802ms
-     *      simd16: 0.0767ms
-     *      simd32: 5.3037ms
-     *
-     * Benchmark result for exp()
-     *
-     *      scalar: 1.7340ms
-     *      simd2: 1.7961ms
-     *      simd4: 1.0424ms
-     *      simd8: 1.0113ms
-     *      simd16: 1.0799ms
-     *
-     * The best bit-width for SIMD types depends on the CPU used.
-     * For M1, benchmarks here show that a bit-width of 256 is most efficient.
-     * There is a sudden cliff at 32 (512bit wide) simd.
-     *
-     */
+public struct Tensor<ShapeType: Shape>: Collection {
 
     public typealias ScalarType = Float
     public let count = ShapeType.scalarCount
@@ -61,12 +27,21 @@ public struct Tensor<ShapeType: Shape> {
     }
 
     @inlinable
-    public static var zero: Tensor<ShapeType> { .init(repeating: .zero) }
+    public static var zero: Tensor<ShapeType> {
+        let scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: ShapeType.scalarCount + Self.paddingCount)
+        scalars.initialize(repeating: 0)
+        return Self(paddedScalars: scalars)
+    }
+
+    @usableFromInline
+    internal init(paddedScalars: UnsafeMutableBufferPointer<ScalarType>) {
+        _scalars = paddedScalars
+    }
 
     @inlinable
     public init(_ scalars: some Collection<ScalarType>) {
         assert(scalars.count == ShapeType.scalarCount)
-        self._scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: scalars.count + Self.paddingCount)
+        self._scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: ShapeType.scalarCount + Self.paddingCount)
         for (index, i) in zip(self._scalars.indices, scalars.indices) {
             self._scalars[index] = scalars[i]
         }
@@ -74,19 +49,33 @@ public struct Tensor<ShapeType: Shape> {
 
     @inlinable
     public init(repeating scalar: ScalarType) {
-        self.init(Array(repeating: scalar, count: ShapeType.scalarCount))
+        _scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: ShapeType.scalarCount + Self.paddingCount)
+        for index in _scalars.indices {
+            _scalars[index] = scalar
+        }
     }
 
     @inlinable
-    public static func random(in range: Range<ScalarType>) -> Self {
-        Self((0..<ShapeType.scalarCount).map { _ in ScalarType.random(in: range) })
+    public static func random(in range: ClosedRange<ScalarType>) -> Self {
+        let scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: ShapeType.scalarCount + Self.paddingCount)
+        for index in 0..<ShapeType.scalarCount {
+            scalars.initializeElement(at: index, to: ScalarType.random(in: range))
+        }
+        return Self(paddedScalars: scalars)
     }
 
-    @inlinable
-    public func copy() -> Self {
-        Self(scalars)
-    }
+    public static func heRandom(in range: ClosedRange<ScalarType>) -> Self {
+        let scalars = UnsafeMutableBufferPointer<ScalarType>.allocate(capacity: ShapeType.scalarCount + Self.paddingCount)
 
+        let size = ShapeType.scalarCount
+        let stddev = (2 / ScalarType(size)).squareRoot()
+
+        for index in 0..<ShapeType.scalarCount {
+            scalars.initializeElement(at: index, to: ScalarType.random(in: range) * stddev)
+        }
+
+        return Self(paddedScalars: scalars)
+    }
 
     // Need an internal final class TensorStorage to take care of dealloc
     // (see eg https://github.com/swiftlang/swift/blob/main/stdlib/public/core/ContiguousArrayBuffer.swift#L345)
@@ -464,7 +453,7 @@ extension Tensor {
     }
 }
 
-extension Tensor /*: CustomStringConvertible*/ {
+extension Tensor : CustomStringConvertible {
     public var description: String {
         "<Tensor \(ShapeType.self): \(scalars)>"
     }
